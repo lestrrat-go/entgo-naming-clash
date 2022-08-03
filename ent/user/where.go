@@ -5,6 +5,7 @@ package user
 import (
 	"entgo.io/bug/ent/predicate"
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 // ID filters vertices based on their ID field.
@@ -288,6 +289,34 @@ func NameEqualFold(v string) predicate.User {
 func NameContainsFold(v string) predicate.User {
 	return predicate.User(func(s *sql.Selector) {
 		s.Where(sql.ContainsFold(s.C(FieldName), v))
+	})
+}
+
+// HasFoos applies the HasEdge predicate on the "foos" edge.
+func HasFoos() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(FoosTable, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, FoosTable, FoosPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasFoosWith applies the HasEdge predicate on the "foos" edge with a given conditions (other predicates).
+func HasFoosWith(preds ...predicate.UserFoo) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(FoosInverseTable, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, FoosTable, FoosPrimaryKey...),
+		)
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
 	})
 }
 

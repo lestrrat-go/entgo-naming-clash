@@ -9,6 +9,7 @@ import (
 
 	"entgo.io/bug/ent/predicate"
 	"entgo.io/bug/ent/user"
+	"entgo.io/bug/ent/userfoo"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -46,9 +47,45 @@ func (uu *UserUpdate) SetName(s string) *UserUpdate {
 	return uu
 }
 
+// AddFooIDs adds the "foos" edge to the UserFoo entity by IDs.
+func (uu *UserUpdate) AddFooIDs(ids ...int) *UserUpdate {
+	uu.mutation.AddFooIDs(ids...)
+	return uu
+}
+
+// AddFoos adds the "foos" edges to the UserFoo entity.
+func (uu *UserUpdate) AddFoos(u ...*UserFoo) *UserUpdate {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
+	}
+	return uu.AddFooIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uu *UserUpdate) Mutation() *UserMutation {
 	return uu.mutation
+}
+
+// ClearFoos clears all "foos" edges to the UserFoo entity.
+func (uu *UserUpdate) ClearFoos() *UserUpdate {
+	uu.mutation.ClearFoos()
+	return uu
+}
+
+// RemoveFooIDs removes the "foos" edge to UserFoo entities by IDs.
+func (uu *UserUpdate) RemoveFooIDs(ids ...int) *UserUpdate {
+	uu.mutation.RemoveFooIDs(ids...)
+	return uu
+}
+
+// RemoveFoos removes "foos" edges to UserFoo entities.
+func (uu *UserUpdate) RemoveFoos(u ...*UserFoo) *UserUpdate {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
+	}
+	return uu.RemoveFooIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -144,6 +181,60 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: user.FieldName,
 		})
 	}
+	if uu.mutation.FoosCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.FoosTable,
+			Columns: user.FoosPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: userfoo.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.RemovedFoosIDs(); len(nodes) > 0 && !uu.mutation.FoosCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.FoosTable,
+			Columns: user.FoosPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: userfoo.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.FoosIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.FoosTable,
+			Columns: user.FoosPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: userfoo.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, uu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{user.Label}
@@ -182,9 +273,45 @@ func (uuo *UserUpdateOne) SetName(s string) *UserUpdateOne {
 	return uuo
 }
 
+// AddFooIDs adds the "foos" edge to the UserFoo entity by IDs.
+func (uuo *UserUpdateOne) AddFooIDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.AddFooIDs(ids...)
+	return uuo
+}
+
+// AddFoos adds the "foos" edges to the UserFoo entity.
+func (uuo *UserUpdateOne) AddFoos(u ...*UserFoo) *UserUpdateOne {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
+	}
+	return uuo.AddFooIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uuo *UserUpdateOne) Mutation() *UserMutation {
 	return uuo.mutation
+}
+
+// ClearFoos clears all "foos" edges to the UserFoo entity.
+func (uuo *UserUpdateOne) ClearFoos() *UserUpdateOne {
+	uuo.mutation.ClearFoos()
+	return uuo
+}
+
+// RemoveFooIDs removes the "foos" edge to UserFoo entities by IDs.
+func (uuo *UserUpdateOne) RemoveFooIDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.RemoveFooIDs(ids...)
+	return uuo
+}
+
+// RemoveFoos removes "foos" edges to UserFoo entities.
+func (uuo *UserUpdateOne) RemoveFoos(u ...*UserFoo) *UserUpdateOne {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
+	}
+	return uuo.RemoveFooIDs(ids...)
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
@@ -303,6 +430,60 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 			Value:  value,
 			Column: user.FieldName,
 		})
+	}
+	if uuo.mutation.FoosCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.FoosTable,
+			Columns: user.FoosPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: userfoo.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.RemovedFoosIDs(); len(nodes) > 0 && !uuo.mutation.FoosCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.FoosTable,
+			Columns: user.FoosPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: userfoo.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.FoosIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.FoosTable,
+			Columns: user.FoosPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: userfoo.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &User{config: uuo.config}
 	_spec.Assign = _node.assignValues

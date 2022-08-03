@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/bug/ent/predicate"
 	"entgo.io/bug/ent/user"
+	"entgo.io/bug/ent/userfoo"
 
 	"entgo.io/ent"
 )
@@ -23,7 +24,8 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeUser = "User"
+	TypeUser    = "User"
+	TypeUserFoo = "UserFoo"
 )
 
 // UserMutation represents an operation that mutates the User nodes in the graph.
@@ -36,6 +38,9 @@ type UserMutation struct {
 	addage        *int
 	name          *string
 	clearedFields map[string]struct{}
+	foos          map[int]struct{}
+	removedfoos   map[int]struct{}
+	clearedfoos   bool
 	done          bool
 	oldValue      func(context.Context) (*User, error)
 	predicates    []predicate.User
@@ -231,6 +236,60 @@ func (m *UserMutation) ResetName() {
 	m.name = nil
 }
 
+// AddFooIDs adds the "foos" edge to the UserFoo entity by ids.
+func (m *UserMutation) AddFooIDs(ids ...int) {
+	if m.foos == nil {
+		m.foos = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.foos[ids[i]] = struct{}{}
+	}
+}
+
+// ClearFoos clears the "foos" edge to the UserFoo entity.
+func (m *UserMutation) ClearFoos() {
+	m.clearedfoos = true
+}
+
+// FoosCleared reports if the "foos" edge to the UserFoo entity was cleared.
+func (m *UserMutation) FoosCleared() bool {
+	return m.clearedfoos
+}
+
+// RemoveFooIDs removes the "foos" edge to the UserFoo entity by IDs.
+func (m *UserMutation) RemoveFooIDs(ids ...int) {
+	if m.removedfoos == nil {
+		m.removedfoos = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.foos, ids[i])
+		m.removedfoos[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedFoos returns the removed IDs of the "foos" edge to the UserFoo entity.
+func (m *UserMutation) RemovedFoosIDs() (ids []int) {
+	for id := range m.removedfoos {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// FoosIDs returns the "foos" edge IDs in the mutation.
+func (m *UserMutation) FoosIDs() (ids []int) {
+	for id := range m.foos {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetFoos resets all changes to the "foos" edge.
+func (m *UserMutation) ResetFoos() {
+	m.foos = nil
+	m.clearedfoos = false
+	m.removedfoos = nil
+}
+
 // Where appends a list predicates to the UserMutation builder.
 func (m *UserMutation) Where(ps ...predicate.User) {
 	m.predicates = append(m.predicates, ps...)
@@ -381,48 +440,488 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.foos != nil {
+		edges = append(edges, user.EdgeFoos)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *UserMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case user.EdgeFoos:
+		ids := make([]ent.Value, 0, len(m.foos))
+		for id := range m.foos {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.removedfoos != nil {
+		edges = append(edges, user.EdgeFoos)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *UserMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case user.EdgeFoos:
+		ids := make([]ent.Value, 0, len(m.removedfoos))
+		for id := range m.removedfoos {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.clearedfoos {
+		edges = append(edges, user.EdgeFoos)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *UserMutation) EdgeCleared(name string) bool {
+	switch name {
+	case user.EdgeFoos:
+		return m.clearedfoos
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *UserMutation) ClearEdge(name string) error {
+	switch name {
+	}
 	return fmt.Errorf("unknown User unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *UserMutation) ResetEdge(name string) error {
+	switch name {
+	case user.EdgeFoos:
+		m.ResetFoos()
+		return nil
+	}
 	return fmt.Errorf("unknown User edge %s", name)
+}
+
+// UserFooMutation represents an operation that mutates the UserFoo nodes in the graph.
+type UserFooMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	dummy         *string
+	clearedFields map[string]struct{}
+	parent        map[int]struct{}
+	removedparent map[int]struct{}
+	clearedparent bool
+	done          bool
+	oldValue      func(context.Context) (*UserFoo, error)
+	predicates    []predicate.UserFoo
+}
+
+var _ ent.Mutation = (*UserFooMutation)(nil)
+
+// userfooOption allows management of the mutation configuration using functional options.
+type userfooOption func(*UserFooMutation)
+
+// newUserFooMutation creates new mutation for the UserFoo entity.
+func newUserFooMutation(c config, op Op, opts ...userfooOption) *UserFooMutation {
+	m := &UserFooMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeUserFoo,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withUserFooID sets the ID field of the mutation.
+func withUserFooID(id int) userfooOption {
+	return func(m *UserFooMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *UserFoo
+		)
+		m.oldValue = func(ctx context.Context) (*UserFoo, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().UserFoo.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withUserFoo sets the old UserFoo of the mutation.
+func withUserFoo(node *UserFoo) userfooOption {
+	return func(m *UserFooMutation) {
+		m.oldValue = func(context.Context) (*UserFoo, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m UserFooMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m UserFooMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *UserFooMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *UserFooMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().UserFoo.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetDummy sets the "dummy" field.
+func (m *UserFooMutation) SetDummy(s string) {
+	m.dummy = &s
+}
+
+// Dummy returns the value of the "dummy" field in the mutation.
+func (m *UserFooMutation) Dummy() (r string, exists bool) {
+	v := m.dummy
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDummy returns the old "dummy" field's value of the UserFoo entity.
+// If the UserFoo object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserFooMutation) OldDummy(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDummy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDummy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDummy: %w", err)
+	}
+	return oldValue.Dummy, nil
+}
+
+// ResetDummy resets all changes to the "dummy" field.
+func (m *UserFooMutation) ResetDummy() {
+	m.dummy = nil
+}
+
+// AddParentIDs adds the "parent" edge to the User entity by ids.
+func (m *UserFooMutation) AddParentIDs(ids ...int) {
+	if m.parent == nil {
+		m.parent = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.parent[ids[i]] = struct{}{}
+	}
+}
+
+// ClearParent clears the "parent" edge to the User entity.
+func (m *UserFooMutation) ClearParent() {
+	m.clearedparent = true
+}
+
+// ParentCleared reports if the "parent" edge to the User entity was cleared.
+func (m *UserFooMutation) ParentCleared() bool {
+	return m.clearedparent
+}
+
+// RemoveParentIDs removes the "parent" edge to the User entity by IDs.
+func (m *UserFooMutation) RemoveParentIDs(ids ...int) {
+	if m.removedparent == nil {
+		m.removedparent = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.parent, ids[i])
+		m.removedparent[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedParent returns the removed IDs of the "parent" edge to the User entity.
+func (m *UserFooMutation) RemovedParentIDs() (ids []int) {
+	for id := range m.removedparent {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ParentIDs returns the "parent" edge IDs in the mutation.
+func (m *UserFooMutation) ParentIDs() (ids []int) {
+	for id := range m.parent {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetParent resets all changes to the "parent" edge.
+func (m *UserFooMutation) ResetParent() {
+	m.parent = nil
+	m.clearedparent = false
+	m.removedparent = nil
+}
+
+// Where appends a list predicates to the UserFooMutation builder.
+func (m *UserFooMutation) Where(ps ...predicate.UserFoo) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// Op returns the operation name.
+func (m *UserFooMutation) Op() Op {
+	return m.op
+}
+
+// Type returns the node type of this mutation (UserFoo).
+func (m *UserFooMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *UserFooMutation) Fields() []string {
+	fields := make([]string, 0, 1)
+	if m.dummy != nil {
+		fields = append(fields, userfoo.FieldDummy)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *UserFooMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case userfoo.FieldDummy:
+		return m.Dummy()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *UserFooMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case userfoo.FieldDummy:
+		return m.OldDummy(ctx)
+	}
+	return nil, fmt.Errorf("unknown UserFoo field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *UserFooMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case userfoo.FieldDummy:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDummy(v)
+		return nil
+	}
+	return fmt.Errorf("unknown UserFoo field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *UserFooMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *UserFooMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *UserFooMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown UserFoo numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *UserFooMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *UserFooMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *UserFooMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown UserFoo nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *UserFooMutation) ResetField(name string) error {
+	switch name {
+	case userfoo.FieldDummy:
+		m.ResetDummy()
+		return nil
+	}
+	return fmt.Errorf("unknown UserFoo field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *UserFooMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.parent != nil {
+		edges = append(edges, userfoo.EdgeParent)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *UserFooMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case userfoo.EdgeParent:
+		ids := make([]ent.Value, 0, len(m.parent))
+		for id := range m.parent {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *UserFooMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.removedparent != nil {
+		edges = append(edges, userfoo.EdgeParent)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *UserFooMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case userfoo.EdgeParent:
+		ids := make([]ent.Value, 0, len(m.removedparent))
+		for id := range m.removedparent {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *UserFooMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedparent {
+		edges = append(edges, userfoo.EdgeParent)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *UserFooMutation) EdgeCleared(name string) bool {
+	switch name {
+	case userfoo.EdgeParent:
+		return m.clearedparent
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *UserFooMutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown UserFoo unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *UserFooMutation) ResetEdge(name string) error {
+	switch name {
+	case userfoo.EdgeParent:
+		m.ResetParent()
+		return nil
+	}
+	return fmt.Errorf("unknown UserFoo edge %s", name)
 }

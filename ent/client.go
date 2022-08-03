@@ -10,9 +10,11 @@ import (
 	"entgo.io/bug/ent/migrate"
 
 	"entgo.io/bug/ent/user"
+	"entgo.io/bug/ent/userfoo"
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 // Client is the client that holds all ent builders.
@@ -22,6 +24,8 @@ type Client struct {
 	Schema *migrate.Schema
 	// User is the client for interacting with the User builders.
 	User *UserClient
+	// UserFoo is the client for interacting with the UserFoo builders.
+	UserFoo *UserFooClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -36,6 +40,7 @@ func NewClient(opts ...Option) *Client {
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.User = NewUserClient(c.config)
+	c.UserFoo = NewUserFooClient(c.config)
 }
 
 // Open opens a database/sql.DB specified by the driver name and
@@ -67,9 +72,10 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:    ctx,
-		config: cfg,
-		User:   NewUserClient(cfg),
+		ctx:     ctx,
+		config:  cfg,
+		User:    NewUserClient(cfg),
+		UserFoo: NewUserFooClient(cfg),
 	}, nil
 }
 
@@ -87,9 +93,10 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:    ctx,
-		config: cfg,
-		User:   NewUserClient(cfg),
+		ctx:     ctx,
+		config:  cfg,
+		User:    NewUserClient(cfg),
+		UserFoo: NewUserFooClient(cfg),
 	}, nil
 }
 
@@ -120,6 +127,7 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	c.User.Use(hooks...)
+	c.UserFoo.Use(hooks...)
 }
 
 // UserClient is a client for the User schema.
@@ -207,7 +215,129 @@ func (c *UserClient) GetX(ctx context.Context, id int) *User {
 	return obj
 }
 
+// QueryFoos queries the foos edge of a User.
+func (c *UserClient) QueryFoos(u *User) *UserFooQuery {
+	query := &UserFooQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := u.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(userfoo.Table, userfoo.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, user.FoosTable, user.FoosPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *UserClient) Hooks() []Hook {
 	return c.hooks.User
+}
+
+// UserFooClient is a client for the UserFoo schema.
+type UserFooClient struct {
+	config
+}
+
+// NewUserFooClient returns a client for the UserFoo from the given config.
+func NewUserFooClient(c config) *UserFooClient {
+	return &UserFooClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `userfoo.Hooks(f(g(h())))`.
+func (c *UserFooClient) Use(hooks ...Hook) {
+	c.hooks.UserFoo = append(c.hooks.UserFoo, hooks...)
+}
+
+// Create returns a create builder for UserFoo.
+func (c *UserFooClient) Create() *UserFooCreate {
+	mutation := newUserFooMutation(c.config, OpCreate)
+	return &UserFooCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of UserFoo entities.
+func (c *UserFooClient) CreateBulk(builders ...*UserFooCreate) *UserFooCreateBulk {
+	return &UserFooCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for UserFoo.
+func (c *UserFooClient) Update() *UserFooUpdate {
+	mutation := newUserFooMutation(c.config, OpUpdate)
+	return &UserFooUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *UserFooClient) UpdateOne(uf *UserFoo) *UserFooUpdateOne {
+	mutation := newUserFooMutation(c.config, OpUpdateOne, withUserFoo(uf))
+	return &UserFooUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *UserFooClient) UpdateOneID(id int) *UserFooUpdateOne {
+	mutation := newUserFooMutation(c.config, OpUpdateOne, withUserFooID(id))
+	return &UserFooUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for UserFoo.
+func (c *UserFooClient) Delete() *UserFooDelete {
+	mutation := newUserFooMutation(c.config, OpDelete)
+	return &UserFooDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a delete builder for the given entity.
+func (c *UserFooClient) DeleteOne(uf *UserFoo) *UserFooDeleteOne {
+	return c.DeleteOneID(uf.ID)
+}
+
+// DeleteOneID returns a delete builder for the given id.
+func (c *UserFooClient) DeleteOneID(id int) *UserFooDeleteOne {
+	builder := c.Delete().Where(userfoo.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &UserFooDeleteOne{builder}
+}
+
+// Query returns a query builder for UserFoo.
+func (c *UserFooClient) Query() *UserFooQuery {
+	return &UserFooQuery{
+		config: c.config,
+	}
+}
+
+// Get returns a UserFoo entity by its id.
+func (c *UserFooClient) Get(ctx context.Context, id int) (*UserFoo, error) {
+	return c.Query().Where(userfoo.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *UserFooClient) GetX(ctx context.Context, id int) *UserFoo {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryParent queries the parent edge of a UserFoo.
+func (c *UserFooClient) QueryParent(uf *UserFoo) *UserQuery {
+	query := &UserQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := uf.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(userfoo.Table, userfoo.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, userfoo.ParentTable, userfoo.ParentPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(uf.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *UserFooClient) Hooks() []Hook {
+	return c.hooks.UserFoo
 }

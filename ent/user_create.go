@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"entgo.io/bug/ent/user"
+	"entgo.io/bug/ent/userfoo"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 )
@@ -29,6 +30,21 @@ func (uc *UserCreate) SetAge(i int) *UserCreate {
 func (uc *UserCreate) SetName(s string) *UserCreate {
 	uc.mutation.SetName(s)
 	return uc
+}
+
+// AddFooIDs adds the "foos" edge to the UserFoo entity by IDs.
+func (uc *UserCreate) AddFooIDs(ids ...int) *UserCreate {
+	uc.mutation.AddFooIDs(ids...)
+	return uc
+}
+
+// AddFoos adds the "foos" edges to the UserFoo entity.
+func (uc *UserCreate) AddFoos(u ...*UserFoo) *UserCreate {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
+	}
+	return uc.AddFooIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -149,6 +165,25 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Column: user.FieldName,
 		})
 		_node.Name = value
+	}
+	if nodes := uc.mutation.FoosIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.FoosTable,
+			Columns: user.FoosPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: userfoo.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

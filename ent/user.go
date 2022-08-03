@@ -19,6 +19,27 @@ type User struct {
 	Age int `json:"age,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the UserQuery when eager-loading is set.
+	Edges UserEdges `json:"edges"`
+}
+
+// UserEdges holds the relations/edges for other nodes in the graph.
+type UserEdges struct {
+	// Foos holds the value of the foos edge.
+	Foos []*UserFoo `json:"foos,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// FoosOrErr returns the Foos value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) FoosOrErr() ([]*UserFoo, error) {
+	if e.loadedTypes[0] {
+		return e.Foos, nil
+	}
+	return nil, &NotLoadedError{edge: "foos"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -66,6 +87,11 @@ func (u *User) assignValues(columns []string, values []interface{}) error {
 		}
 	}
 	return nil
+}
+
+// QueryFoos queries the "foos" edge of the User entity.
+func (u *User) QueryFoos() *UserFooQuery {
+	return (&UserClient{config: u.config}).QueryFoos(u)
 }
 
 // Update returns a builder for updating this User.
